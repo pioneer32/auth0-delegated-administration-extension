@@ -1,6 +1,6 @@
 {
   "name": "auth0-delegated-admin",
-  "version": "4.8.4",
+  "version": "5.0.0",
   "description": "This extension allows non-dashboard administrators to manage (a subset of) users.",
   "engines": {
     "node": ">22.13"
@@ -27,7 +27,7 @@
     "extension"
   ],
   "author": "Auth0",
-  "repository": "https://github.com/auth0-extensions/auth0-delegated-administration-extension",
+  "repository": "https://github.com/pioneer32/auth0-delegated-administration-extension",
   "license": "MIT",
   "auth0-extension": {
     "title": "Delegated Administration Dashboard",
@@ -79,23 +79,24 @@
       }
     },
     "externals": [
-      "async@3.2.4",
-      "bluebird@3.7.2",
-      "body-parser@1.20.2",
-      "cookie-parser@1.4.6",
-      "ejs@3.1.9",
-      "express@4.18.2",
-      "jsonwebtoken@9.0.1",
-      "jwks-rsa@3.0.1",
-      "lodash@4.17.21",
-      "lru-memoizer@1.10.0",
-      "moment@2.29.4",
-      "morgan@1.10.0",
-      "qs@6.11.2",
-      "request@2.88.2",
-      "superagent@8.0.9",
-      "uuid@9.0.0",
-      "winston@3.10.0"
+      "formidable",
+      "nconf",
+      "auth0-extension-tools",
+      "auth0-extension-express-tools",
+      "auth0",
+      "path",
+      "fs",
+      "morgan",
+      "express",
+      "body-parser",
+      "vm",
+      "lru-memoizer",
+      "bluebird",
+      "lodash",
+      "moment",
+      "request",
+      "superagent",
+      "ejs"
     ],
     "excluded": [
       "safe-eval",
@@ -152,6 +153,7 @@
     "jwt-decode": "^3.1.2",
     "lodash": "^4.17.21",
     "lru-memoizer": "2.2.0",
+    "lucene": "^2.1.1",
     "moment": "^2.29.4",
     "morgan": "^1.10.0",
     "ms": "^2.1.3",

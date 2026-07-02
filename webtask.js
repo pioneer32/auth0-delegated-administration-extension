@@ -1,20 +1,52 @@
-const tools = require("auth0-extension-express-tools");
-
-const expressApp = require("./server").default;
-const config = require("./server/lib/config");
+const path = require("path");
+const nconf = require("nconf");
 const logger = require("./server/lib/logger");
 
-const createServer = tools.createServer((cfg, storage) => {
-  logger.log("info", `Starting Delegated Admin Extension - Version: ${process.env.CLIENT_VERSION}`);
+// eslint-disable-next-line import/no-extraneous-dependencies
+require("@babel/register")({
+  ignore: [/node_modules/],
+  sourceMaps: !(process.env.NODE_ENV === "production"),
+  plugins: [
+    "@babel/plugin-proposal-export-default-from",
+    "@babel/plugin-proposal-object-rest-spread",
+  ],
+  presets: [
+    [
+      "@babel/env",
+      {
+        targets: {
+          node: "current",
+        },
+      },
+    ],
+  ],
+});
+// eslint-disable-next-line import/no-extraneous-dependencies
+require("@babel/polyfill");
 
-  return expressApp(cfg, storage);
+// Handle uncaught.
+process.on("uncaughtException", (err) => {
+  logger.log("error", err);
 });
 
-module.exports = (context, req, res) => {
-  const publicUrl =
-    (req.x_wt && req.x_wt.ectx && req.x_wt.ectx.PUBLIC_WT_URL) || false;
-  if (!publicUrl) {
-    config.setValue("PUBLIC_WT_URL", tools.urlHelpers.getWebtaskUrl(req));
+// Initialize configuration.
+nconf.argv().env().file(path.join(__dirname, "./server/config.json")).defaults({
+  NODE_ENV: "development",
+  HOSTING_ENV: "default",
+  PORT: 3001,
+  WT_URL: "http://localhost:3000",
+});
+
+// throw new Error(JSON.stringify(nconf.get()));
+
+// Start the server.
+const app = require("./server").default((key) => nconf.get(key), null);
+const port = nconf.get("PORT");
+
+app.listen(port, (error) => {
+  if (error) {
+    logger.log("error", error);
+  } else {
+    logger.log("info", `Listening on http://localhost:${port}.`);
   }
-  createServer(context, req, res);
-};
+});

@@ -1,0 +1,2 @@
+https://a0us.jfrog.io/artifactory/api/npm/npm
+https://registry.npmjs.org

@@ -51,6 +51,12 @@ export default class UserOverview extends React.Component {
     this.onHandleOptionChange = this.onHandleOptionChange.bind(this);
   }
 
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.searchValue !== this.props.searchValue) {
+      this.setState({ searchValue: nextProps.searchValue });
+    }
+  }
+
   onSearch = (query, filter) => {
     this.props.onSearch(query, filter, this.focusSearchResults);
   }

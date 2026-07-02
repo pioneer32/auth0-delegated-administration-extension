@@ -2,9 +2,11 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 
 import { connect } from 'react-redux';
+import { replace } from 'react-router-redux';
 import { Pagination, TableTotals } from 'auth0-extension-ui';
 
 import { connectionActions, userActions } from '../../actions';
+import validateLuceneQuery from '../../utils/validateLuceneQuery';
 
 import * as dialogs from './Dialogs';
 import TabsHeader from '../../components/TabsHeader';
@@ -33,7 +35,9 @@ class Users extends Component {
     sortOrder: PropTypes.number.isRequired,
     sortProperty: PropTypes.string.isRequired,
     searchValue: PropTypes.string,
-    languageDictionary: PropTypes.object.isRequired
+    languageDictionary: PropTypes.object.isRequired,
+    location: PropTypes.object.isRequired,
+    replace: PropTypes.func.isRequired
   };
 
   constructor(props) {
@@ -41,10 +45,60 @@ class Users extends Component {
     this.state = {
       showCreateForm: false
     };
+    this.initialUrlSearchApplied = false;
   }
 
+  getSearchFromLocation = (location) => {
+    const search = location && location.query && location.query.search;
+    return typeof search === 'string' ? search : '';
+  };
+
+  updateSearchInUrl = (search) => {
+    const { location, replace: replaceRoute } = this.props;
+    const query = { ...location.query };
+
+    if (search) {
+      query.search = search;
+    } else {
+      delete query.search;
+    }
+
+    replaceRoute({
+      pathname: location.pathname,
+      query
+    });
+  };
+
+  getInitialSearchQuery = () => {
+    if (this.initialUrlSearchApplied) {
+      return null;
+    }
+
+    this.initialUrlSearchApplied = true;
+    const urlSearch = this.getSearchFromLocation(this.props.location).trim();
+
+    if (!urlSearch) {
+      return null;
+    }
+
+    const validation = validateLuceneQuery(urlSearch);
+    if (!validation.valid) {
+      this.updateSearchInUrl('');
+      return null;
+    }
+
+    return urlSearch;
+  };
+
   componentWillMount = () => {
-    this.props.fetchUsers();
+    const initialSearch = this.getInitialSearchQuery();
+
+    if (initialSearch) {
+      this.props.fetchUsers(initialSearch, false, 0);
+    } else {
+      this.props.fetchUsers();
+    }
+
     if (!this.props.connectionsLoading) {
       this.props.fetchConnections();
     }
@@ -56,11 +110,13 @@ class Users extends Component {
 
   onSearch = (query, filterBy, onSuccess) => {
     if (query && query.length > 0) {
+      this.updateSearchInUrl(query);
       this.props.fetchUsers(query, false, 0, filterBy, null, onSuccess);
     }
   };
 
   onReset = () => {
+    this.updateSearchInUrl('');
     this.props.fetchUsers('', true);
   };
 
@@ -173,6 +229,6 @@ function mapStateToProps(state) {
   };
 }
 
-const UsersContainer = connect(mapStateToProps, { ...connectionActions, ...userActions })(Users);
+const UsersContainer = connect(mapStateToProps, { ...connectionActions, ...userActions, replace })(Users);
 
 export default UsersContainer;

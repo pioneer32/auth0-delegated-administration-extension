@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { Provider } from 'react-redux';
 import { mount } from 'enzyme';
 import { expect } from 'chai';
-import { describe, it } from 'mocha';
+import { describe, it, before, after, beforeEach, afterEach } from 'mocha';
 import { fromJS } from 'immutable';
 import { Router, Route, createMemoryHistory } from 'react-router';
 import MockAdapter from 'axios-mock-adapter';
@@ -10,22 +10,17 @@ import axios from 'axios'
 
 import fakeStore from '../../../utils/fakeStore';
 
-import Users from '../../../../client/containers/Users/Users';
+import UsersContainer from '../../../../client/containers/Users/Users';
 import TabsHeader from '../../../../client/components/TabsHeader';
 import UserOverview from '../../../../client/components/Users/UserOverview';
+
+const Users = UsersContainer.WrappedComponent;
 
 // import { Pagination, TableTotals } from 'auth0-extension-ui';
 
 const memoryHistory = createMemoryHistory({});
 let wrapper = undefined;
 const wrapperMount = (...args) => (wrapper = mount(...args));
-
-class UsersWrapper extends Component {
-  render() {
-    return <Users
-    />
-  }
-}
 
 describe('#Client-Containers-Users-Users', () => {
   let stub;
@@ -41,7 +36,8 @@ describe('#Client-Containers-Users-Users', () => {
   });
 
 
-  const renderComponent = (languageDictionary, settings = {}) => {
+  const renderComponent = (languageDictionary, settings = {}, route = '/') => {
+    memoryHistory.push(route);
     const initialState = {
       connections: fromJS({ records: [{name: 'connA'}]}),
       accessLevel: fromJS({ record: { role: 1 } }),
@@ -73,7 +69,7 @@ describe('#Client-Containers-Users-Users', () => {
     return wrapperMount(
       <Provider store={fakeStore(initialState)}>
         <Router history={memoryHistory}>
-          <Route path="/" component={UsersWrapper}/>
+          <Route path="/users" component={UsersContainer}/>
         </Router>
       </Provider>
     );
@@ -117,7 +113,7 @@ describe('#Client-Containers-Users-Users', () => {
   };
 
   it('should render', () => {
-    const component = renderComponent();
+    const component = renderComponent({}, {}, '/users');
 
     checkAllComponentsForLanguageDictionary(component, {});
     checkCreateButtonText(component, 'Create User');
@@ -125,7 +121,7 @@ describe('#Client-Containers-Users-Users', () => {
   });
 
   it('should render not applicable language dictionary', () => {
-    const component = renderComponent({ someKey: 'someValue' });
+    const component = renderComponent({ someKey: 'someValue' }, {}, '/users');
 
     checkAllComponentsForLanguageDictionary(component, { someKey: 'someValue' });
     checkCreateButtonText(component, 'Create User');
@@ -137,7 +133,7 @@ describe('#Client-Containers-Users-Users', () => {
       createUserButtonText: 'Create User Text',
       usersTitle: 'Users Title'
     };
-    const component = renderComponent(languageDictionary);
+    const component = renderComponent(languageDictionary, {}, '/users');
 
     checkAllComponentsForLanguageDictionary(component, languageDictionary);
     checkCreateButtonText(component, 'Create User Text');
@@ -151,8 +147,68 @@ describe('#Client-Containers-Users-Users', () => {
     };
     const component = renderComponent(languageDictionary, {
       canCreateUser: false
-    });
+    }, '/users');
 
     checkCreateUserButtonMissing(component);
+  });
+
+  it('should read a valid search query from the URL on initial load only', () => {
+    const component = renderComponent({}, {}, '/users?search=email%3Ajohn');
+    const users = component.find(Users).instance();
+
+    expect(users.initialUrlSearchApplied).to.equal(true);
+    users.initialUrlSearchApplied = false;
+    expect(users.getInitialSearchQuery()).to.equal('email:john');
+    expect(users.getInitialSearchQuery()).to.equal(null);
+  });
+
+  it('should ignore an invalid search query from the URL on initial load', () => {
+    const replaceCalls = [];
+    const component = renderComponent({}, {}, '/users?search=foo)%20OR%20(user_id%3Aevil');
+    const users = component.find(Users).instance();
+
+    users.props = {
+      ...users.props,
+      replace: (location) => replaceCalls.push(location)
+    };
+    users.initialUrlSearchApplied = false;
+
+    expect(users.getInitialSearchQuery()).to.equal(null);
+    expect(replaceCalls[0].query.search).to.equal(undefined);
+  });
+
+  it('should update the URL when the search query changes', () => {
+    const replaceCalls = [];
+    const component = renderComponent({}, {}, '/users');
+    const users = component.find(Users).instance();
+
+    users.props = {
+      ...users.props,
+      location: { pathname: '/users', query: {} },
+      replace: (location) => replaceCalls.push(location)
+    };
+
+    users.updateSearchInUrl('email:jane');
+
+    expect(replaceCalls.length).to.equal(1);
+    expect(replaceCalls[0].pathname).to.equal('/users');
+    expect(replaceCalls[0].query.search).to.equal('email:jane');
+  });
+
+  it('should remove the search query from the URL when reset', () => {
+    const replaceCalls = [];
+    const component = renderComponent({}, {}, '/users?search=email%3Ajohn');
+    const users = component.find(Users).instance();
+
+    users.props = {
+      ...users.props,
+      location: { pathname: '/users', query: { search: 'email:john' } },
+      replace: (location) => replaceCalls.push(location)
+    };
+
+    users.updateSearchInUrl('');
+
+    expect(replaceCalls.length).to.equal(1);
+    expect(replaceCalls[0].query.search).to.equal(undefined);
   });
 });
